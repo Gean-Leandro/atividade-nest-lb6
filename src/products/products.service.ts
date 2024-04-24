@@ -1,56 +1,50 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-
-const INDEX_PRODUCT_NOT_FOUND = -1
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Product } from './products.entity';
+import { Repository } from 'typeorm';
+import { CreateProductDTO } from './dtos/create-product-dto';
+import { UpdateProductDTO } from './dtos/update-product-dto';
+import { CategoriesService } from 'src/categories/categories.service';
 
 @Injectable()
 export class ProductsService {
-    private products: Product[] = [
-        {
-            id: 1,
-            name: 'produto 1',
-        },
-        {
-            id: 2,
-            name: 'produto 2',
-        },
-        {
-            id: 3,
-            name: 'produto 3',
-        }
-    ]
+    constructor(@InjectRepository(Product) private readonly productRepository: Repository<Product>, private readonly categoryService: CategoriesService){}
 
-    findAll(){
-        return this.products;
+    findAll() {
+        return this.productRepository.find();
     }
 
-    findOne(id: number){
-        const product = this.products.find((product) => product.id === +id);
-        if (!product) {
-            throw new NotFoundException("Produto não existe");
+    async findOne(id: number) {
+        const product = await this.productRepository.findOne({where: {id: id}});
+        if (!product){
+            throw new NotFoundException("Produto não encontrado");
         }
         return product;
     }
 
-    create(input) {
-        const productIndex = this.products.findIndex((product) => product.id === input.id);
-        if (productIndex === INDEX_PRODUCT_NOT_FOUND) {
-            this.products.push(input)
-        } else{
-            throw new ConflictException("Produto já existe");
-        }
+    async create(data: CreateProductDTO) {
+        const category = await this.categoryService.findOne(data.idCategory);
+        const product = this.productRepository.create({
+            name: data.name, 
+            description: data.description,
+            category: category
+        });
+        return this.productRepository.save(product);
     }
 
-    delete(id: number) {
-        const productIndex = this.products.findIndex((product) => product.id === +id);
-        if (productIndex === INDEX_PRODUCT_NOT_FOUND) {
-            throw new NotFoundException("Produto não existe");
-        } else {
-            this.products.splice(productIndex, 1);
-        }
+    async remove(id: number) {
+        const product = await this.findOne(id);
+        return this.productRepository.remove(product);
     }
-}
 
-export class Product {
-    id: number;
-    name: string;
+    async update(id: number, data: UpdateProductDTO) {
+        const product = await this.productRepository.preload({
+            id: id,
+            ...data
+        });
+        if (!product) {
+            throw new NotFoundException("Produto não encontrado");
+        }
+        return this.productRepository.save(product);
+    }
 }

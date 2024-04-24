@@ -1,14 +1,26 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ProductsController } from './products/products.controller';
-import { UsersController } from './users/users.controller';
-import { UsersService } from './users/users.service';
-import { ProductsService } from './products/products.service';
+import { ProductsModule } from './products/products.module';
+import { CategoriesModule } from './categories/categories.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+require('dotenv').config()
 
 @Module({
-  imports: [],
-  controllers: [AppController, ProductsController, UsersController],
-  providers: [AppService, UsersService, ProductsService],
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.POSTGRES_HOST,
+      port: +process.env.POSTGRES_PORT,
+      username: process.env.POSTGRES_USER,
+      password: process.env.POSTGRES_PASSWORD,
+      database: process.env.POSTGRES_DB,
+      autoLoadEntities: true,
+      synchronize: true
+    }),
+    ProductsModule, 
+    CategoriesModule],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
